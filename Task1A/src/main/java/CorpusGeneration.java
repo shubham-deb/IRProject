@@ -1,224 +1,173 @@
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
-
-import javax.swing.filechooser.FileSystemView;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
 
 public class CorpusGeneration {
 
 	public static void main(String[] args) throws IOException {
-		FileInputStream fis = new FileInputStream("links.txt");
-		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
-		LinkedHashMap<String,LinkedHashMap<String,Integer>> word = 
-				new LinkedHashMap<String,LinkedHashMap<String,Integer>>();
-		LinkedHashMap<String,Integer> ivList = new LinkedHashMap<String,Integer>();
-		LinkedHashSet<Integer> tokenindocument = new LinkedHashSet<Integer>();
-
-		String line = null;
-		int counter=0;
-		PrintWriter writer2 = new PrintWriter(new BufferedWriter(new FileWriter("index.txt"))); 
-
-		String title;
-		while ((line = br.readLine()) != null)
-		{    //connecting to the document via url
-			counter++;
-			Document doc = Jsoup.connect(line).get();
-			//this would give me all elements which have anchor tag
-			Elements hrefelements = doc.select("a");
-			hrefelements.remove();
-			Elements tablerowelements = doc.select("tr");
-			tablerowelements.remove();
-			//getting title of the url 
-		     //StringBuilder title = new StringBuilder(doc.title());
-			if(line.contains("_"))
-		     title = line.substring((line.lastIndexOf("/")+1), line.length()).replace("_", "");
-			else
-			title = line.substring((line.lastIndexOf("/")+1), line.length()).replace("_", "");
-		     title.toString().toCharArray();
-		     //get the text of the file
-			StringBuilder text =  new StringBuilder (doc.body().text());
-			//System.out.println("words "+words);
+		
+		File folder=new File("cacm");
+		File[] listOfFiles = folder.listFiles();
+		Map<String,Long> Tf=new HashMap<String,Long>();
+		Map<String,Set<Integer>> Df=new HashMap<String,Set<Integer>>();
+		
+		//Setup index file
+		PrintWriter indexWriter = new PrintWriter(new BufferedWriter(new FileWriter("index.txt"))); 
+		
+		for (int i = 0; i < listOfFiles.length; i++) {
+			//System.out.println(listOfFiles[i].toString());
+			// Assign docID to document
+			indexWriter.write(listOfFiles[i].getName() + " " +i+"\n");
+			Document doc = Jsoup.parse(listOfFiles[i], "UTF-8");
 			
-			File theDir = new File("corpus");
+			//System.out.println(doc.toString());
+			//System.out.println("====================================");
+			//System.out.println(doc.text());
+			//System.out.println("====================================");
 			
-			if (!theDir.exists()) {
-			    System.out.println("creating directory: " + theDir.toString());
-			    boolean result = false;
-
-			    try{
-			        theDir.mkdir();
-			        result = true;
-			    } 
-			    catch(SecurityException se){
-			        //handle it
-			    }        
-			    if(result) {    
-			        System.out.println("DIR created");  
-			    }
+			String[] tokenList=doc.text().split("\\s+");
+			List<String> cleanedList = new LinkedList<String>();
+			for (String token:tokenList) {
+				//System.out.print(token + " ");
+				String[] CleanedTokens=processToken(token);
+				for (String Ctoken:CleanedTokens)
+					cleanedList.add(Ctoken);
+			}
+			//System.out.println("====================================");
+			/*
+			for(String token:cleanedList){
+				System.out.println(token);
+			}
+			*/
+			
+			File corpusDir = new File("corpus");
+			createCorpusDir(corpusDir);
+			PrintWriter corpusWriter = new PrintWriter(new BufferedWriter
+					(new FileWriter(corpusDir.toString()+"/"+listOfFiles[i].getName()+".txt")));
+			
+			for(String token:cleanedList){
+				corpusWriter.write(token+"\n");
+				if(Tf.containsKey(token)){
+					Tf.put(token, Tf.get(token)+1);
+				} else {
+					Tf.put(token,(long) 1);
+				}
+				
+				if(Df.containsKey(token)){
+					Set<Integer> docSet= Df.get(token);
+					docSet.add(i);
+					Df.put(token, docSet);
+				} else {
+					Set<Integer> docSet=new HashSet<Integer>();
+					docSet.add(i);
+					Df.put(token,docSet);
+				}
 			}
 			
-			PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(theDir.toString()+"/"+title+".txt", true))); 		
-			String[] lines2 = text.toString().split(" ");
-			for(String s2: lines2){
-				//System.out.println(text.charAt(counter3));
-				s2.replaceAll("[,.;!?(){}\\[\\]<>%]", "");}
-			tokenindocument.add(text.length());
-			for (int counter3 = 0;counter3<text.length();counter3++)
-				{
-					if(text.charAt(counter3) >= 65 && text.charAt(counter3) <=90)    
-					      // check for upper case letter ...   ascii code of "a" is 65 ... "z" is 90.
-					  {
-					  text.setCharAt(counter3, (char)(text.charAt(counter3)+32));    
-					        //   The character at the specified index is set to  to uppercase
-					  }
-				}
-			for(int counter3=0;counter3<text.length();counter3++){
-				//System.out.println(text.charAt(counter3));
-			if(text.charAt(counter3)== ',' ||
-				   text.charAt(counter3)== '.' ||
-				   text.charAt(counter3)== ';' ||
-				   text.charAt(counter3)== '"' ||
-				   text.charAt(counter3)== '<' ||
-				   text.charAt(counter3)== '>' ||
-				   text.charAt(counter3)== '^' ||
-				   text.charAt(counter3)== '[' ||
-				   text.charAt(counter3)== ']' ||
-				   text.charAt(counter3)== ':'){
-				   text.deleteCharAt(counter3);}}
-			
-			for(int counter2=0;counter2<text.length();counter2++)
-				writer.write(text.charAt(counter2));
-			String[] lines = text.toString().split(" ");
-			for(String s: lines){	
-				ivList= new LinkedHashMap<String,Integer>();
-				//Integer frequency = getFrequency(s,title);
-				int frequency = getFrequency(s,text);
-				//System.out.println("String "+s+" has frequency "+frequency);
-				String t = title.toString();
-				ivList.put(t, frequency+1);
-				//System.out.println("String "+s+" has key-value pair: "+wordValue);
-				if(word.containsKey(s)){
-				//System.out.println("it contains same key");
-				word.get(s).put(t, frequency);
-				//word.put(s,ivList);
-				}
-				else{
-				//System.out.println("it contains different key");
-				word.put(s,ivList);}
-				}
-			writer.close();
-			}
-		for (String key : word.keySet()) {
-			 writer2.write(key + ":\t" + word.get(key)+"\n");}
-		writer2.close();
-		
-		PrintWriter writer3 = new PrintWriter(new BufferedWriter(new FileWriter("UnigramTermFrequency.txt", true)));
-		
-		PrintWriter writer4 = new PrintWriter(new BufferedWriter(new FileWriter("UnigramDocFrequency.txt", true)));
-		
-		Comparator<Map.Entry<String,Integer>> byMapValues = new Comparator<Map.Entry<String,Integer>>() {
-	    	 @Override
-	        public int compare(Map.Entry<String, Integer> left, Map.Entry<String,Integer> right) {
-	            return left.getValue().compareTo(right.getValue());
-	        }
-	    };
-		Comparator<Map.Entry<Integer,String>> byMapKeys = new Comparator<Map.Entry<Integer,String>>() {
-	    	 @Override
-	        public int compare(Map.Entry<Integer, String> left, Map.Entry<Integer,String> right) {
-	            return left.getValue().compareTo(right.getValue());
-	        }
-	    };
-		LinkedHashMap<String,Integer> vals = new LinkedHashMap<String,Integer>();
-		LinkedHashSet<Integer> ints = new LinkedHashSet<>();
-		LinkedHashMap<Integer,String> keys = new LinkedHashMap<Integer,String>();
-	    List<Map.Entry<String,Integer>> SortedValues = new ArrayList<Map.Entry<String, Integer>>();
-	    List<Map.Entry<Integer,String>> SortedKeys = new ArrayList<Map.Entry<Integer, String>>();
-		
-		for (String key2 :word.keySet()){
-			int value=0;
-			Collection<Integer> c = word.get(key2).values();
-			for (Integer values : c) {
-			    int i = values.intValue();
-			    value = value +i;
-			    //do something with either value or i
-			}	
-			keys.put(value,key2);
-			//writer3.write(key2+" : "+word.get(key2).values()+"\n");
-			}
-		SortedKeys.addAll(keys.entrySet()); 
-		Collections .sort(SortedKeys,byMapKeys);
-		
-		TreeMap<Integer, String> sorted = new TreeMap<>(Collections.reverseOrder());
-		
-		for(Integer k:keys.keySet()){
-			sorted.put(k, keys.get(k));
+			corpusWriter.close();
 		}
-			
-		for (Integer s: sorted.keySet())
-			writer3.write(sorted.get(s)+":"+s+"\n");
-/*		
-		for(int i=0;i<SortedKeys.size();i++)
-			writer3.write(SortedKeys.indexOf(i)+" : "+SortedKeys.get(i)+"\n");*/
-		writer3.close();
+		indexWriter.close();
 		
 		
-	    for (String key3 :word.keySet()){
-	    		writer4.write(key3+" : "+word.get(key3).keySet()+" : "+word.get(key3).size()+"\n");
-	   }
-	    writer4.close();
-	    // add all candy bars
-	    SortedValues.addAll(vals.entrySet());
-	    // sort the collection
-	    Collections.sort(SortedValues, byMapValues);
-	    
-		br.close();
-		//close two parenthesis, one for main and other for class
+		
+		PrintWriter DFWriter= new PrintWriter(new BufferedWriter(new FileWriter("UnigramDocFrequency.txt")));
+		for(String tokenKey:Df.keySet()){
+			Set<Integer> docSet= Df.get(tokenKey);
+			DFWriter.write(tokenKey+" ");
+			StringBuilder docString=new StringBuilder();
+			String prefix = "";
+			for (int docid:docSet){
+				docString.append(prefix);
+				prefix=",";
+				docString.append(docid);
+			}
+			docString.append(" "+docSet.size());
+			DFWriter.write(docString.toString()+"\n");
+		}
+		DFWriter.close();
+		
+		PrintWriter TFWriter = new PrintWriter(new BufferedWriter(new FileWriter("UnigramTermFrequency.txt")));
+		for(String tokenKey:Tf.keySet()){
+			TFWriter.write(tokenKey+ " " + Tf.get(tokenKey).toString()+"\n");
+		}
+		TFWriter.close();
 	}
+	
+	public static void createCorpusDir(File directory){
+		if (!directory.exists()) {
+		    System.out.println("creating directory: " + directory.toString());
+		    boolean result = false;
 
-	private static int getFrequency(String s, StringBuilder text) throws IOException {
-		// TODO Auto-generated method stub
-		int occcurences=0;
-		String[] words = text.toString().split(" ");
-		for(String w: words)
-			if(w.equals(s))
-				occcurences+=1;
-		return occcurences;
+		    try{
+		    	directory.mkdir();
+		        result = true;
+		    } 
+		    catch(SecurityException se){
+		        //handle it
+		    }        
+		    if(result) {    
+		        System.out.println("DIR created");  
+		    }
+		}
 	}
-	public static <K extends Comparable,V extends Comparable> Map<K,V> sortByKeys(Map<K,V> map){
-        List<K> keys = new LinkedList<K>(map.keySet());
-        Collections.sort(keys);
-      
-        //LinkedHashMap will keep the keys in the order they are inserted
-        //which is currently sorted on natural ordering
-        Map<K,V> sortedMap = new LinkedHashMap<K,V>();
-        for(K key: keys){
-            sortedMap.put(key, map.get(key));
-        }
-      
-        return sortedMap;
-    }
+	
+	public static String[] processToken(String token) {
+		//if token has only special characters
+		if(!token.matches("^[\\W_]+$")) {
+			//TODO : Fix '=' sign
+			token=token.toLowerCase();
+			//Replace all special char at end of token
+			token = token.replaceAll("[^a-zA-Z0-9]+$", "");
+			//Replace all special char at start end of token
+			token = token.replaceAll("^[^a-zA-Z0-9]+", "");
+			
+			//Pattern pt = Pattern.compile("[^a-zA-Z0-9]");
+	        //Matcher match= pt.matcher(token);
+			
+	        //Get tokens with special chars inbetween them
+			if(!token.matches("[a-z0-9]+")){
+				//System.out.println("case1: "+token);
+				if(token.matches("[^0-9]+")){
+					//System.out.println("case1.1: "+token);
+					//Tokens that have letters and special chars
+					//System.out.println("text only token: "+token);
+					//ignore words with ONLY hyphens
+					if(!token.matches("^[a-z-]+$")){	
+						String[] cleanedToken=token.split("[^\\w]+");
+						return cleanedToken;
+					}
+				} else if (token.matches("[^a-z]+")) {
+					//Tokens that have numbers and special chars
+					//System.out.println("case1.2: "+token);
+				} else {
+					//alphanumeric with special char
+					//System.out.println("case1.3: "+token);
+					String[] cleanedToken=token.split("[^\\w]+");
+					return cleanedToken;
+				}
+				
+			}
+			
+		} 
+		
+		else {
+			System.out.println("only symbol: "+token);
+		}
+		
+		ArrayList<String> dummyList = new ArrayList<String>();
+		dummyList.add(token);
+		return dummyList.toArray(new String[dummyList.size()]);
+	}
 
 }
