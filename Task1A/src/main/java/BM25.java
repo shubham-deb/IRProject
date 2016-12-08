@@ -208,9 +208,9 @@ public class BM25 {
 		for(int docnumber = 0;docnumber<listOfFiles.length;docnumber++)
 		{ 
 			
-			if (count==5)
-				break;
-			count++;
+			//if (count==5)
+			//	break;
+			//count++;
 			
 			Document doc = Jsoup.parse(listOfFiles[docnumber], "UTF-8");
 			double finalScore = 0;
@@ -313,7 +313,7 @@ public class BM25 {
 			writer2.write(" "+(querynum+1)+" "+"Q"+(querynum+1)+" "+entry.getKey()
 							 +" "+rank+" "+entry.getValue()+" BM25_System"+"\n");
 		}
-		writer2.write("*********************************************************************");
+		writer2.write("*********************************************************************"+"\n");
 		}// end of first for loop
 		
 		writer2.close();
