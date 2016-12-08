@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -20,7 +21,7 @@ import java.util.Map.Entry;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
-public class BM25 {
+public class BM_25 {
 
 	public double getAverageDocLength() throws IOException
 	{
@@ -112,8 +113,6 @@ public class BM25 {
 	public Boolean containsTerm(String queryterm,String doc) throws IOException
 	{
 		// HANDLING CACM-756 AS CACM-0756 IS GIVEN IN THE CORPUS
-		try
-		{
 		FileInputStream fis = new FileInputStream("corpus\\"+doc+".html"+".txt");
 		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 		String line=null;
@@ -126,26 +125,7 @@ public class BM25 {
 		}
 		br.close();
 		return false;
-		}
-		catch(Exception e)
-		{
-			StringBuilder s  = new StringBuilder("corpus\\"+doc+".html"+".txt");
-			s.insert(s.indexOf("-")+1, "0");
-			FileInputStream fis = new FileInputStream(s.toString());
-			BufferedReader br = new BufferedReader(new InputStreamReader(fis));
-			String line=null;
-			// get the total occurences of the term in the relevant docs
-			while((line = br.readLine()) != null){
-				String[] tokenList=line.split("\\s+");
-				for (String term: tokenList)
-					if (queryterm.equals(term))
-						return true;
-			}
-			br.close();
-			return false;
-		}
-	}
-	
+	}	
 	public int getNumberofRelevantDocs(String queryterm, ArrayList<String> reldocs) throws IOException
 	{
 		int numberofreldocs = 0;
@@ -163,13 +143,13 @@ public class BM25 {
 	{
 
 		double averagedoclength=0;
-		LinkedHashMap<String, Integer> querytermfreq = new LinkedHashMap<String, Integer>();
+		LinkedHashMap<String, Double> querytermfreq = new LinkedHashMap<String, Double>();
 		LinkedHashMap<String, Double> BM25QueryScore = new LinkedHashMap<String, Double>();
 		PrintWriter writer2 = new PrintWriter(new BufferedWriter(new FileWriter("BM25.txt")));
 		
 		
-		BM25 object = new BM25();
-		CorpusGenerationindexer = new CorpusGeneration();
+		BM_25 object = new BM_25();
+		CorpusGeneration indexer = new CorpusGeneration();
 		GetQueries getqueryobj = new GetQueries(); 
 		
 		// get average doc length(avgdl)
@@ -184,10 +164,10 @@ public class BM25 {
 		
 		// parse all the queries first and then take query by query
 		for(int querynum = 0; querynum<getqueryobj.getTotalQueries();querynum++)
-			{
-			System.out.println("query number "+querynum);
+		{
+			//System.out.println("query number "+querynum);
 			String query = getqueryobj.getQuery(querynum+1);
-			
+			//String query = "computers";
 			//System.out.println("Query is "+query);
 			
 			//tokenize each term in the query
@@ -197,12 +177,14 @@ public class BM25 {
 			for(String queryterm: tokenizedquery)
 			{
 				//System.out.println(queryterm);
-				int querytermfrequency = 0;
+				double querytermfrequency = 0;
 				for(String nextqueryterm: tokenizedquery)
 					if(queryterm.equals(nextqueryterm))
 						querytermfrequency++;
 				querytermfreq.put(queryterm, querytermfrequency);
 			}
+			
+			ArrayList<String> reldocs = object.getRelevantDocs(querynum+1);
 			
 		for(int docnumber = 0;docnumber<listOfFiles.length;docnumber++)
 		{ 
@@ -210,15 +192,16 @@ public class BM25 {
 			//if (count==5)
 			//	break;
 			//count++;
-			System.out.println("Doc number is "+docnumber);
+			//System.out.println("Doc number is "+docnumber);
 			Document doc = Jsoup.parse(listOfFiles[docnumber], "UTF-8");
+			//System.out.println("doc is "+listOfFiles[docnumber].getName());
 			double finalScore = 0;
 			
 			double avgdoclength = object.getAverageDocLength();
+			//System.out.println("average doc length is "+avgdoclength);
 			
 			int doclength = object.getDocumentLength(doc);
-			
-			ArrayList<String> reldocs = object.getRelevantDocs(docnumber+1);
+			//System.out.println("doc length is "+doclength);
 
 /*			for(int i=0; i<reldocs.size(); i++)
 			{
@@ -227,23 +210,33 @@ public class BM25 {
 			
 			// Calculating K
 			double K = (0.75 * (doclength/avgdoclength) + 0.25) * 1.2;
+			//System.out.println("K is "+K);
 				
 			for(String queryterm : tokenizedquery)
 				{
-				
+				//System.out.println("current queryterm is "+queryterm);
 				// one half of the multiplied constants in BM25
 				// This is the left half of the constants
 				double normalizedTF = (2.2 * object.getTermFrequency(queryterm, doc))
 									   /
 									  (K + object.getTermFrequency(queryterm, doc));
 				
+				if(normalizedTF == 0)
+					normalizedTF = 1;
+				
 				//System.out.println("Value of normalizedTF : "+normalizedTF);
 				
+				//System.out.println("Value of query term frequency : "+querytermfreq.get(queryterm));
 				// This is the right half of the constants
-				double normalizedQueryFreq = (101 * querytermfreq.get(queryterm))
+				DecimalFormat four = new DecimalFormat("#0.0000");
+				double normalizedQueryFreq = (101.0 * querytermfreq.get(queryterm))
 											  /
 											 (100 + querytermfreq.get(queryterm));
 				
+				if(normalizedQueryFreq == 0)
+					normalizedQueryFreq = 1;
+				
+				normalizedQueryFreq = Double.parseDouble(four.format(normalizedQueryFreq));
 				//System.out.println("Value of normalizedQueryFreq : "+normalizedQueryFreq);
 				
 				double multipliedConstantFactor = normalizedTF * normalizedQueryFreq;
@@ -256,13 +249,15 @@ public class BM25 {
 				
 				// value of R
 				int R = reldocs.size();
-				//System.out.println("reldocs size is  "+R);
+				//System.out.println("R is  "+R);
 				
 				// value of ri
 				int ri = object.getNumberofRelevantDocs(queryterm, reldocs);
+				//System.out.println("value of ri is "+ri);
 				
 				// value of ni
 				int ni = object.getDocumentFrequency(queryterm);
+				//System.out.println("value of ni is "+ni);
 				
 				// total docs in the corpus
 				int N = listOfFiles.length;
@@ -275,14 +270,16 @@ public class BM25 {
 						               /
 						              (N - ni - R - + ri + 0.5));
 				
-				double intermediatedivision = numerator / denominator;
+				double intermediatedivision = (numerator / denominator) * multipliedConstantFactor;
+				//System.out.println("value of intermediatedivision is "+intermediatedivision);
 				
 				// the final BM25 score of this document
 				finalScore += Math.log(intermediatedivision);
+				//System.out.println("finalScore is "+finalScore);
 				//String[] tokenList=doc.text().split("\\s+");
 				}
-			BM25QueryScore.put(listOfFiles[docnumber].getName(), finalScore);
-		
+			//System.out.println("Score is "+finalScore);
+			BM25QueryScore.put(listOfFiles[docnumber].getName(), finalScore);	
 		}// end of docnumber loop
 		
 		// get the linkedhashmap values
@@ -319,7 +316,7 @@ public class BM25 {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		BM25 object1 = new BM25();
+		BM_25 object1 = new BM_25();
 		object1.CalculateBM25();
 		// TODO: READ EACH QUERY FROM THE FILE AS A STRING
 		// AND THEN PUT THEM IN A LINKEDHASHMAP
