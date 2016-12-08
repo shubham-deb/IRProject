@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -102,7 +103,11 @@ public class BM_25 {
 		// get the total documents in the corpus
 		while((line = br.readLine()) != null){
 			String[] tokenList=line.split("\\s+");
+			//System.out.println("before parsing");
+			//System.out.println("query number is "+querynumber);
+			//System.out.println("tokens are "+tokenList[0]);
 			int currentquerynumber = Integer.parseInt(tokenList[0]);
+			//System.out.println("after parsing");
 			if (currentquerynumber==querynumber)
 				relevantdocs.add(tokenList[2]);
 		}
@@ -145,6 +150,7 @@ public class BM_25 {
 		double averagedoclength=0;
 		LinkedHashMap<String, Double> querytermfreq = new LinkedHashMap<String, Double>();
 		LinkedHashMap<String, Double> BM25QueryScore = new LinkedHashMap<String, Double>();
+		LinkedHashMap<String, LinkedHashSet<String>> RelevantDocs = new LinkedHashMap<String, LinkedHashSet<String>>();
 		PrintWriter writer2 = new PrintWriter(new BufferedWriter(new FileWriter("BM25.txt")));
 		
 		
@@ -152,18 +158,29 @@ public class BM_25 {
 		CorpusGeneration indexer = new CorpusGeneration();
 		GetQueries getqueryobj = new GetQueries(); 
 		
+		double avgdoclength = object.getAverageDocLength();
+		
 		// get average doc length(avgdl)
 		averagedoclength = object.getAverageDocLength();
 		
-		int k2=100;
-		double k1 =1.2, b=0.75;
-		// *******************BM25 ALGORITHM************************************
-		int count = 0;
 		File folder=new File("corpus");
 		File[] listOfFiles = folder.listFiles();
 		
+		ArrayList<Integer> doclength = new ArrayList<Integer>();
+		for(int docnumber = 0;docnumber<3204;docnumber++)
+		{
+			Document doc = Jsoup.parse(listOfFiles[docnumber], "UTF-8");
+			doclength.add(object.getDocumentLength(doc));
+		}
+		
+		int k2=100;
+		double k1 =1.2, b=0.75;
+		// total docs in the corpus
+		int N = 3204;
+		
+		LinkedHashMap<String, Integer> df = new LinkedHashMap<String,Integer>();
 		// parse all the queries first and then take query by query
-		for(int querynum = 0; querynum<getqueryobj.getTotalQueries();querynum++)
+		for(int querynum = 0; querynum<64;querynum++)
 		{
 			//System.out.println("query number "+querynum);
 			String query = getqueryobj.getQuery(querynum+1);
@@ -176,6 +193,7 @@ public class BM_25 {
 			//get the frequency of each query term(qf(i))
 			for(String queryterm: tokenizedquery)
 			{
+				df.put(queryterm, object.getDocumentFrequency(queryterm));
 				//System.out.println(queryterm);
 				double querytermfrequency = 0;
 				for(String nextqueryterm: tokenizedquery)
@@ -183,8 +201,23 @@ public class BM_25 {
 						querytermfrequency++;
 				querytermfreq.put(queryterm, querytermfrequency);
 			}
+		}
+		// *******************BM25 ALGORITHM************************************
+		
+		// parse all the queries first and then take query by query
+		for(int querynum = 0; querynum<getqueryobj.getTotalQueries();querynum++)
+		{
+			//System.out.println("query number "+querynum);
+			String query = getqueryobj.getQuery(querynum+1);
+			//String query = "computers";
+			//System.out.println("Query is "+query);
 			
-			ArrayList<String> reldocs = object.getRelevantDocs(querynum+1);
+			//tokenize each term in the query
+			String[] tokenizedquery = indexer.processToken(query);
+			
+		ArrayList<String> reldocs = object.getRelevantDocs(querynum+1);
+		// value of R
+		int R = reldocs.size();
 			
 		for(int docnumber = 0;docnumber<listOfFiles.length;docnumber++)
 		{ 
@@ -192,15 +225,14 @@ public class BM_25 {
 			//if (count==5)
 			//	break;
 			//count++;
-			//System.out.println("Doc number is "+docnumber);
+			System.out.println("Query number "+querynum+" Doc number is "+docnumber);
 			Document doc = Jsoup.parse(listOfFiles[docnumber], "UTF-8");
 			//System.out.println("doc is "+listOfFiles[docnumber].getName());
 			double finalScore = 0;
 			
-			double avgdoclength = object.getAverageDocLength();
 			//System.out.println("average doc length is "+avgdoclength);
 			
-			int doclength = object.getDocumentLength(doc);
+			int dl = doclength.get(docnumber);
 			//System.out.println("doc length is "+doclength);
 
 /*			for(int i=0; i<reldocs.size(); i++)
@@ -209,7 +241,7 @@ public class BM_25 {
 			}*/
 			
 			// Calculating K
-			double K = (0.75 * (doclength/avgdoclength) + 0.25) * 1.2;
+			double K = (0.75 * (dl/avgdoclength) + 0.25) * 1.2;
 			//System.out.println("K is "+K);
 				
 			for(String queryterm : tokenizedquery)
@@ -228,15 +260,13 @@ public class BM_25 {
 				
 				//System.out.println("Value of query term frequency : "+querytermfreq.get(queryterm));
 				// This is the right half of the constants
-				DecimalFormat four = new DecimalFormat("#0.0000");
 				double normalizedQueryFreq = (101.0 * querytermfreq.get(queryterm))
 											  /
 											 (100 + querytermfreq.get(queryterm));
 				
 				if(normalizedQueryFreq == 0)
 					normalizedQueryFreq = 1;
-				
-				normalizedQueryFreq = Double.parseDouble(four.format(normalizedQueryFreq));
+
 				//System.out.println("Value of normalizedQueryFreq : "+normalizedQueryFreq);
 				
 				double multipliedConstantFactor = normalizedTF * normalizedQueryFreq;
@@ -247,8 +277,6 @@ public class BM_25 {
 				// +1 bcz I am doing it sequentially from each query and assuming first query is Q1
 				// 0+1 = 1st doc's relevance docs fetched
 				
-				// value of R
-				int R = reldocs.size();
 				//System.out.println("R is  "+R);
 				
 				// value of ri
@@ -256,11 +284,8 @@ public class BM_25 {
 				//System.out.println("value of ri is "+ri);
 				
 				// value of ni
-				int ni = object.getDocumentFrequency(queryterm);
+				int ni = df.get(queryterm);
 				//System.out.println("value of ni is "+ni);
-				
-				// total docs in the corpus
-				int N = listOfFiles.length;
 				
 				double numerator = ((ri+0.5)
 									 /
