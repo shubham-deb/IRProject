@@ -95,7 +95,7 @@ public class BM25 {
 	public ArrayList<String> getRelevantDocs(int querynumber) throws IOException
 	{
 		 ArrayList<String> relevantdocs = new ArrayList<String>();
-		FileInputStream fis = new FileInputStream("cacm-rel.rel");
+		FileInputStream fis = new FileInputStream("cacm.rel");
 		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 		String line=null;
 		// get the total documents in the corpus
@@ -169,7 +169,7 @@ public class BM25 {
 		
 		
 		BM25 object = new BM25();
-		Indexer indexer = new Indexer();
+		CorpusGenerationindexer = new CorpusGeneration();
 		GetQueries getqueryobj = new GetQueries(); 
 		
 		// get average doc length(avgdl)
@@ -184,9 +184,8 @@ public class BM25 {
 		
 		// parse all the queries first and then take query by query
 		for(int querynum = 0; querynum<getqueryobj.getTotalQueries();querynum++)
-		{
-			
-			count = 0;
+			{
+			System.out.println("query number "+querynum);
 			String query = getqueryobj.getQuery(querynum+1);
 			
 			//System.out.println("Query is "+query);
@@ -211,7 +210,7 @@ public class BM25 {
 			//if (count==5)
 			//	break;
 			//count++;
-			
+			System.out.println("Doc number is "+docnumber);
 			Document doc = Jsoup.parse(listOfFiles[docnumber], "UTF-8");
 			double finalScore = 0;
 			
