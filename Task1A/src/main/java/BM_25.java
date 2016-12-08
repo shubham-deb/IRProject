@@ -149,7 +149,7 @@ public class BM_25 {
 		
 		
 		BM_25 object = new BM_25();
-		CorpusGenerationindexer = new CorpusGeneration();
+		CorpusGeneration indexer = new CorpusGeneration();
 		GetQueries getqueryobj = new GetQueries(); 
 		
 		// get average doc length(avgdl)
@@ -163,7 +163,7 @@ public class BM_25 {
 		File[] listOfFiles = folder.listFiles();
 		
 		// parse all the queries first and then take query by query
-		for(int querynum = 0; querynum<1;querynum++)
+		for(int querynum = 0; querynum<getqueryobj.getTotalQueries();querynum++)
 		{
 			//System.out.println("query number "+querynum);
 			String query = getqueryobj.getQuery(querynum+1);
@@ -186,7 +186,7 @@ public class BM_25 {
 			
 			ArrayList<String> reldocs = object.getRelevantDocs(querynum+1);
 			
-		for(int docnumber = 0;docnumber<50;docnumber++)
+		for(int docnumber = 0;docnumber<listOfFiles.length;docnumber++)
 		{ 
 			
 			//if (count==5)
@@ -278,7 +278,7 @@ public class BM_25 {
 				//System.out.println("finalScore is "+finalScore);
 				//String[] tokenList=doc.text().split("\\s+");
 				}
-			System.out.println("Score is "+finalScore);
+			//System.out.println("Score is "+finalScore);
 			BM25QueryScore.put(listOfFiles[docnumber].getName(), finalScore);	
 		}// end of docnumber loop
 		
