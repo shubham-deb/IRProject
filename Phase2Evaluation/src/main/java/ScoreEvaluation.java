@@ -18,7 +18,7 @@ public class ScoreEvaluation {
 	static Map <Integer,ArrayList<String>>scoreMap=new HashMap<Integer,ArrayList<String>>();
 	
 	public static void main(String[] args) throws IOException {
-		String ScoreName="BM25.txt";
+		String ScoreName="Phase2.txt";
 		File scoreFile = new File(ScoreName);
 		File relevanceFile = new File("cacm.rel");
 		
@@ -48,18 +48,20 @@ public class ScoreEvaluation {
 			while ((line = br.readLine()) != null) {
 				String[] pline=line.trim().split("\\s+");
 				//for(String s:pline) { System.out.println(s);}
-				
-				
-				//for(String s:docID) { System.out.println(s);}
-				
-				if(Pattern.matches("[0-9]+", pline[0])) {
-					String docID=pline[2].split("-|\\.")[1];
-					if(scoreMap.containsKey(Integer.parseInt(pline[0]))) {
-						scoreMap.get(Integer.parseInt(pline[0])).add(docID);
-					} else {
-						ArrayList<String> sList=new ArrayList<String>();
-						sList.add(docID);
-						scoreMap.put(Integer.parseInt(pline[0]), sList);
+				if (pline.length>2){
+					String q_ID=pline[0];
+					
+					//for(String s:docID) { System.out.println(s);}
+					
+					if(Pattern.matches("[0-9]+", q_ID)) {
+						String docID=pline[2].split("-|\\.")[1];
+						if(scoreMap.containsKey(Integer.parseInt(q_ID))) {
+							scoreMap.get(Integer.parseInt(q_ID)).add(docID);
+						} else {
+							ArrayList<String> sList=new ArrayList<String>();
+							sList.add(docID);
+							scoreMap.put(Integer.parseInt(q_ID), sList);
+						}
 					}
 				}
 			}
@@ -87,12 +89,17 @@ public class ScoreEvaluation {
 	static void calculatePR(String ModelName) throws IOException{
 		Map<Integer,Double> Precision = new HashMap<Integer, Double>(); 
 		Map<Integer,Double> Recall = new HashMap<Integer, Double>(); 
+		CreateDir(new File (ModelName));
+		PrintWriter PRWriter = new PrintWriter(new BufferedWriter(new FileWriter(ModelName+"/PR.csv")));
+		PRWriter.write("query,rank,document,precision,recall\n");
 		
-		
+		PrintWriter PKWriter = new PrintWriter(new BufferedWriter(new FileWriter(ModelName+"/P@K.csv")));
+		PKWriter.write("query,P@5,P@20\n");
 		for (int query : scoreMap.keySet()){
 			boolean isRR=false;
 			Set<String> Relevantdocs=relMap.get(query);
 			if (Relevantdocs == null) continue; 
+			PRWriter.write("\n");
 			Double avgP=0.0d;
 			int Relcount=0;
 			int rank=0;
@@ -106,10 +113,9 @@ public class ScoreEvaluation {
 			}
 			System.out.println("=======Reldocs===========");
 */
-			CreateDir(new File (ModelName));
-			CreateDir(new File (ModelName+"/"+query));
-			PrintWriter PRWriter = new PrintWriter(new BufferedWriter(new FileWriter(ModelName+"/"+query+"/PR.txt")));
-			PRWriter.write("RANK\tDOCUMENT\tPRECISION\tRECALL\n");
+			
+			//CreateDir(new File (ModelName+"/"+query));
+			
 			ArrayList<String> RankedDocs=scoreMap.get(query);
 			for (String val : RankedDocs){
 				 
@@ -130,20 +136,22 @@ public class ScoreEvaluation {
 				if (Relevantdocs != null) 
 					Recall.put(rank, (double) Relcount/(double)Relevantdocs.size());
 				
-				PRWriter.write(rank+"\t"+"CACM-"+val+"\t"+P+"\t"+Recall.get(rank)+"\n");
+				PRWriter.write(query+","+rank+","+"CACM-"+val+","+P+","+Recall.get(rank)+"\n");
 
 			}
-			PRWriter.close();
+			
 			avgP=avgP/(double)Relevantdocs.size();
 			//System.out.println("query: "+query+" avgP: "+ avgP);
 			avgPrecision.put(query,avgP);
 			
-			PrintWriter PKWriter = new PrintWriter(new BufferedWriter(new FileWriter(ModelName+"/"+query+"/P@K.txt")));
-			PKWriter.write("P@5 : " + Precision.get(5)+"\n");
-			PKWriter.write("P@20 : " + Precision.get(20)+"\n");
-			PKWriter.close();
+			
+			PKWriter.write(query+"," +Precision.get(5)+"," + Precision.get(20)+"\n");
+			//PKWriter.write("P@20"+"," + Precision.get(20)+"\n");
+			
 
 		}
+		PKWriter.close();
+		PRWriter.close();
 		PrintWriter MAPWriter = new PrintWriter(new BufferedWriter(new FileWriter(ModelName+"/MAP.txt")));
 		Double MeanAP=0.0d;
 		for(int qury:avgPrecision.keySet()){
