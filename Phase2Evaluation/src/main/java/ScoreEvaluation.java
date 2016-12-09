@@ -18,7 +18,7 @@ public class ScoreEvaluation {
 	static Map <Integer,ArrayList<String>>scoreMap=new HashMap<Integer,ArrayList<String>>();
 	
 	public static void main(String[] args) throws IOException {
-		String ScoreName="CosineLatestRun64Q.txt";
+		String ScoreName="BM25.txt";
 		File scoreFile = new File(ScoreName);
 		File relevanceFile = new File("cacm.rel");
 		
@@ -46,13 +46,19 @@ public class ScoreEvaluation {
 		try (BufferedReader br = new BufferedReader(new FileReader(scoreFile))) {
 			String line;
 			while ((line = br.readLine()) != null) {
-				String[] pline=line.split(" ");
+				String[] pline=line.trim().split("\\s+");
+				//for(String s:pline) { System.out.println(s);}
+				
+				
+				//for(String s:docID) { System.out.println(s);}
+				
 				if(Pattern.matches("[0-9]+", pline[0])) {
+					String docID=pline[2].split("-|\\.")[1];
 					if(scoreMap.containsKey(Integer.parseInt(pline[0]))) {
-						scoreMap.get(Integer.parseInt(pline[0])).add(pline[3]);
+						scoreMap.get(Integer.parseInt(pline[0])).add(docID);
 					} else {
 						ArrayList<String> sList=new ArrayList<String>();
-						sList.add(pline[3]);
+						sList.add(docID);
 						scoreMap.put(Integer.parseInt(pline[0]), sList);
 					}
 				}
