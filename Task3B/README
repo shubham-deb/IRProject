@@ -1,0 +1,4 @@
+README
+
+To build: mvn package
+To run: java -cp target/<TaskFolder>-0.0.1-SNAPSHOT.jar <classname>
